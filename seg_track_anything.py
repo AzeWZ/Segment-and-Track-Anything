@@ -22,6 +22,12 @@ def colorize_mask(pred_mask):
     save_mask = save_mask.convert(mode='RGB')
     return np.array(save_mask)
 
+def split_img(img,mask):
+    img_mask = np.zeros_like(img)
+    img_mask = img
+    img_mask = cv2.add(img_mask,mask)
+    return img_mask.astype(img.dtype)
+
 def draw_mask(img, mask, alpha=0.5, id_countour=False):
     img_mask = np.zeros_like(img)
     img_mask = img
@@ -52,6 +58,7 @@ def draw_mask(img, mask, alpha=0.5, id_countour=False):
         img_mask[countours,:] = 0
         
     return img_mask.astype(img.dtype)
+
 
 def create_dir(dir_path):
     # if os.path.isdir(dir_path):
@@ -146,6 +153,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
                 torch.cuda.empty_cache()
                 gc.collect()
             elif (frame_idx % sam_gap) == 0:
+                # 发现新的目标
                 seg_mask = SegTracker.seg(frame)
                 torch.cuda.empty_cache()
                 gc.collect()
@@ -158,6 +166,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
                 SegTracker.add_reference(frame, pred_mask)
             else:
                 pred_mask = SegTracker.track(frame,update_memory=True)
+            print(frame_idx)
             torch.cuda.empty_cache()
             gc.collect()
             
@@ -202,8 +211,9 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
         frame = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
         pred_mask = pred_list[frame_idx]
         masked_frame = draw_mask(frame, pred_mask)
+        # 写带 mask 的图片，处理后的
         cv2.imwrite(f"{io_args['output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png", masked_frame[:, :, ::-1])
-
+        cv2.imwrite(f"{io_args['output_masked_frame_dir']}/{str(frame_idx).zfill(5)}_a.png", split_img(frame,pred_mask)[:, :, ::-1])
         masked_pred_list.append(masked_frame)
         masked_frame = cv2.cvtColor(masked_frame,cv2.COLOR_RGB2BGR)
         out.write(masked_frame)
