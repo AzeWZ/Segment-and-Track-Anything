@@ -243,7 +243,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
         spit_frame = split_img(frame, pred_mask)
         # 写带 mask 的图片，处理后的
         cv2.imwrite(f"{io_args['output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png", masked_frame[:, :, ::-1])
-        cv2.imwrite(f"{io_args['split_output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png", spit_frame[:, :, ::-1])
+        cv2.imwrite(f"{io_args['split_output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png", spit_frame)
         masked_pred_list.append(masked_frame)
         masked_frame = cv2.cvtColor(masked_frame, cv2.COLOR_RGB2BGR)
         out.write(masked_frame)
