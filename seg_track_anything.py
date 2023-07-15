@@ -119,6 +119,7 @@ def tracking_objects_in_video(SegTracker, input_video, input_img_seq, fps, frame
         'tracking_result_dir': tracking_result_dir,
         'output_mask_dir': f'{tracking_result_dir}/{video_name}_masks',
         'output_masked_frame_dir': f'{tracking_result_dir}/{video_name}_masked_frames',
+        'split_output_masked_frame_dir': f'{tracking_result_dir}/{video_name}_split_masked_frames',
         'output_video': f'{tracking_result_dir}/{video_name}_seg.mp4',  # keep same format as input video
         'split_output_video': f'{tracking_result_dir}/{video_name}_seg_split.mp4',
         'output_gif': f'{tracking_result_dir}/{video_name}_seg.gif',
@@ -155,7 +156,10 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
             os.system(f"rm -r {io_args['output_mask_dir']}")
         if os.path.isdir(io_args['output_masked_frame_dir']):
             os.system(f"rm -r {io_args['output_masked_frame_dir']}")
+        if os.path.isdir(io_args['split_output_masked_frame_dir']):
+            os.system(f"rm -r {io_args['split_output_masked_frame_dir']}")
     output_mask_dir = io_args['output_mask_dir']
+    split_output_masked_frame_dir = io_args['split_output_masked_frame_dir']
     create_dir(io_args['output_mask_dir'])
     create_dir(io_args['output_masked_frame_dir'])
 
@@ -238,7 +242,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
         spit_frame = split_img(frame, pred_mask)
         # 写带 mask 的图片，处理后的
         cv2.imwrite(f"{io_args['output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png", masked_frame[:, :, ::-1])
-        # cv2.imwrite(f"{io_args['output_masked_frame_dir']}/{str(frame_idx).zfill(5)}_a.png", split_img(frame,pred_mask)[:, :, ::-1])
+        cv2.imwrite(f"{io_args['split_output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png", spit_frame[:, :, ::-1])
         masked_pred_list.append(masked_frame)
         masked_frame = cv2.cvtColor(masked_frame, cv2.COLOR_RGB2BGR)
         out.write(masked_frame)
