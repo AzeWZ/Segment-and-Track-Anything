@@ -162,6 +162,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
     split_output_masked_frame_dir = io_args['split_output_masked_frame_dir']
     create_dir(io_args['output_mask_dir'])
     create_dir(io_args['output_masked_frame_dir'])
+    create_dir(io_args['split_output_masked_frame_dir'])
 
     torch.cuda.empty_cache()
     gc.collect()
