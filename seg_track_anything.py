@@ -250,8 +250,6 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
 
         masked_pred_list.append(masked_frame)
         masked_frame = cv2.cvtColor(masked_frame, cv2.COLOR_RGB2BGR)
-        spit_frame = cv2.cvtColor(spit_frame, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(f"{io_args['split_output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png", spit_frame[:, :, ::-1])
         out.write(masked_frame)
 
         write_split_video(frame, maskPath, splitOut)
