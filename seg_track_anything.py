@@ -105,7 +105,7 @@ def tracking_objects_in_video(SegTracker, input_video, input_img_seq, fps, frame
 
 
 # 视频合成
-def write_split_video(frame, maskPath, splitOut):
+def write_split_video(frame, maskPath):
     mask = cv2.imread(maskPath)
     # mask二值化
     _, mask = cv2.threshold(mask, 1, 255, cv2.THRESH_BINARY)
@@ -130,7 +130,8 @@ def write_split_video(frame, maskPath, splitOut):
     print(frame[0, 0])
     # 保存融合后的图片
     cv2.imwrite(f"{maskPath}_split.png", frame)
-    splitOut.write(frame);
+    cv2.imwrite(f"{maskPath}_split_mask.png", mask)
+    return frame
     # cv2.imwrite(f"{str(frame_idx).zfill(5)}_b.png", frame, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 
 
@@ -224,6 +225,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
     num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    fourcc2 = cv2.VideoWriter_fourcc(*"mp4v")
     # if input_video[-3:]=='mp4':
     #     fourcc =  cv2.VideoWriter_fourcc(*"mp4v")
     # elif input_video[-3:] == 'avi':
@@ -232,7 +234,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
     # else:
     #     fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
     out = cv2.VideoWriter(io_args['output_video'], fourcc, fps, (width, height))
-    splitOut = cv2.VideoWriter(io_args['split_output_video'], fourcc, fps, (width, height))
+    splitOut = cv2.VideoWriter(io_args['split_output_video'], fourcc2, fps, (width, height))
 
     frame_idx = 0
     while cap.isOpened():
@@ -252,7 +254,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
         masked_frame = cv2.cvtColor(masked_frame, cv2.COLOR_RGB2BGR)
         out.write(masked_frame)
 
-        write_split_video(frame, maskPath, splitOut)
+        splitOut.write(write_split_video(frame, maskPath))
         print('frame {} writed'.format(frame_idx), end='\r')
         frame_idx += 1
     out.release()
