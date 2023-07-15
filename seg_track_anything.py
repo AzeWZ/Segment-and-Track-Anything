@@ -25,33 +25,6 @@ def colorize_mask(pred_mask):
     return np.array(save_mask)
 
 
-def split_img(frame, mask):
-    # mask二值化
-    _, mask = cv2.threshold(mask, 1, 255, cv2.THRESH_BINARY)
-    print(mask.shape)
-    # 读取的 mask 是三通道的，需要转换成四通道的
-    # mask = cv2.cvtColor(mask, cv2.COLOR_BGR2BGRA)
-    # 保存 mask 黑白两色
-    # cv2.imwrite(f"{str(frame_idx).zfill(5)}_c.png", mask[:, :, ::1])
-    # 融合 frame 和 mask
-
-    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
-    mask = cv2.cvtColor(mask, cv2.COLOR_BGR2BGRA)
-
-    frame = cv2.bitwise_and(frame, mask)
-    print(frame.shape)
-    print(frame[0, 0])
-    # Slice of alpha channel
-    alpha = frame[:, :, 3]
-
-    # Use logical indexing to set alpha channel to 0 where BGR=0
-    alpha[np.all(frame[:, :, 0:3] == (0, 0, 0), 2)] = 0
-    print(frame[0, 0])
-    # 保存融合后的图片
-    # cv2.imwrite(f"{str(frame_idx).zfill(5)}_b.png", frame)
-    return frame
-
-
 def draw_mask(img, mask, alpha=0.5, id_countour=False):
     img_mask = np.zeros_like(img)
     img_mask = img
@@ -129,6 +102,36 @@ def tracking_objects_in_video(SegTracker, input_video, input_img_seq, fps, frame
         return video_type_input_tracking(SegTracker, input_video, io_args, video_name, frame_num)
     elif input_img_seq is not None:
         return img_seq_type_input_tracking(SegTracker, io_args, video_name, imgs_path, fps, frame_num)
+
+
+# 视频合成
+def write_split_video(frame, maskPath, splitOut):
+    mask = cv2.imread(maskPath)
+    # mask二值化
+    _, mask = cv2.threshold(mask, 1, 255, cv2.THRESH_BINARY)
+    print(mask.shape)
+    # 读取的 mask 是三通道的，需要转换成四通道的
+    # mask = cv2.cvtColor(mask, cv2.COLOR_BGR2BGRA)
+    # 保存 mask 黑白两色
+    # cv2.imwrite(f"{str(frame_idx).zfill(5)}_c.png", mask[:, :, ::1])
+    # 融合 frame 和 mask
+
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
+    mask = cv2.cvtColor(mask, cv2.COLOR_BGR2BGRA)
+
+    frame = cv2.bitwise_and(frame, mask)
+    print(frame.shape)
+    print(frame[0, 0])
+    # Slice of alpha channel
+    alpha = frame[:, :, 3]
+
+    # Use logical indexing to set alpha channel to 0 where BGR=0
+    alpha[np.all(frame[:, :, 0:3] == (0, 0, 0), 2)] = 0
+    print(frame[0, 0])
+    # 保存融合后的图片
+    cv2.imwrite(f"{maskPath}_split.png", frame)
+    splitOut.write(frame);
+    # cv2.imwrite(f"{str(frame_idx).zfill(5)}_b.png", frame, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 
 
 def video_type_input_tracking(SegTracker, input_video, io_args, video_name, frame_num=0):
@@ -240,20 +243,23 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         pred_mask = pred_list[frame_idx]
         masked_frame = draw_mask(frame, pred_mask)
-        spit_frame = split_img(frame, pred_mask)
+
         # 写带 mask 的图片，处理后的
-        cv2.imwrite(f"{io_args['output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png", masked_frame[:, :, ::-1])
+        maskPath = f"{io_args['output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png";
+        cv2.imwrite(maskPath, masked_frame[:, :, ::-1])
 
         masked_pred_list.append(masked_frame)
         masked_frame = cv2.cvtColor(masked_frame, cv2.COLOR_RGB2BGR)
         spit_frame = cv2.cvtColor(spit_frame, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(f"{io_args['split_output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png", spit_frame)
+        cv2.imwrite(f"{io_args['split_output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png", spit_frame[:, :, ::-1])
         out.write(masked_frame)
-        splitOut.write(spit_frame)
+
+        write_split_video(frame, maskPath, splitOut)
         print('frame {} writed'.format(frame_idx), end='\r')
         frame_idx += 1
     out.release()
     splitOut.release()
+
     cap.release()
     print("\n{} saved".format(io_args['output_video']))
     print("\n{} saved".format(io_args['split_output_video']))
