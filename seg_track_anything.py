@@ -269,7 +269,6 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
     num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    fourcc2 = cv2.VideoWriter_fourcc(*"mp4v")
     # if input_video[-3:]=='mp4':
     #     fourcc =  cv2.VideoWriter_fourcc(*"mp4v")
     # elif input_video[-3:] == 'avi':
@@ -310,7 +309,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
     # source video to segment
     cap = cv2.VideoCapture(input_video)
     fps = cap.get(cv2.CAP_PROP_FPS)
-    create_split_video(f"{io_args['output_masked_frame_dir']}", input_video,
+    create_split_video(f"{io_args['output_mask_dir']}", input_video,
                        f"{io_args['split_output_masked_frame_dir']}/")
 
     # save colorized masks as a gif
