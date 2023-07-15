@@ -108,7 +108,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
     # source video to segment
     cap = cv2.VideoCapture(input_video)
     fps = cap.get(cv2.CAP_PROP_FPS)
-
+    print("fps:", fps)
     if frame_num > 0:
         output_mask_name = sorted([img_name for img_name in os.listdir(io_args['output_mask_dir'])])
         output_masked_frame_name = sorted([img_name for img_name in os.listdir(io_args['output_masked_frame_dir'])])
