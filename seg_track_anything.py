@@ -135,6 +135,50 @@ def write_split_video(frame, maskPath):
     # cv2.imwrite(f"{str(frame_idx).zfill(5)}_b.png", frame, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 
 
+def create_split_video(mask_path, video_path, output_path):
+    # 读取 masks 文件夹
+    mask_list = os.listdir(mask_path)
+    # mask_list 排序
+    # print(mask_list)
+
+    # 读取视频中每一帧，与 masks 中的掩码文件进行按位与操作
+    frame_idx = 0
+    cap = cv2.VideoCapture(video_path)
+    while True:
+        ret, frame = cap.read()
+        if ret:
+            mask = cv2.imread(os.path.join(mask_path, f"{str(frame_idx).zfill(5)}.png"))
+            # mask二值化
+            _, mask = cv2.threshold(mask, 1, 255, cv2.THRESH_BINARY)
+            print(mask.shape)
+            # 读取的 mask 是三通道的，需要转换成四通道的
+            # mask = cv2.cvtColor(mask, cv2.COLOR_BGR2BGRA)
+            # 保存 mask 黑白两色
+            # cv2.imwrite(f"{str(frame_idx).zfill(5)}_c.png", mask[:, :, ::1])
+            # 融合 frame 和 mask
+
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
+            mask = cv2.cvtColor(mask, cv2.COLOR_BGR2BGRA)
+
+            frame = cv2.bitwise_and(frame, mask)
+            print(frame.shape)
+            print(frame[0, 0])
+            # Slice of alpha channel
+            alpha = frame[:, :, 3]
+
+            # Use logical indexing to set alpha channel to 0 where BGR=0
+            alpha[np.all(frame[:, :, 0:3] == (0, 0, 0), 2)] = 0
+            print(frame[0, 0])
+            # 保存融合后的图片
+            cv2.imwrite(f"{output_path}{str(frame_idx).zfill(5)}_b.png", frame)
+            # cv2.imwrite(f"{str(frame_idx).zfill(5)}_b.png", frame, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+
+        else:
+            break
+        frame_idx = frame_idx + 1
+    cap.release()
+
+
 def video_type_input_tracking(SegTracker, input_video, io_args, video_name, frame_num=0):
     pred_list = []
     masked_pred_list = []
@@ -234,7 +278,6 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
     # else:
     #     fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
     out = cv2.VideoWriter(io_args['output_video'], fourcc, fps, (width, height))
-    splitOut = cv2.VideoWriter(io_args['split_output_video'], fourcc2, fps, (width, height))
 
     frame_idx = 0
     while cap.isOpened():
@@ -254,16 +297,21 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
         masked_frame = cv2.cvtColor(masked_frame, cv2.COLOR_RGB2BGR)
         out.write(masked_frame)
 
-        splitOut.write(write_split_video(frame, maskPath))
         print('frame {} writed'.format(frame_idx), end='\r')
         frame_idx += 1
     out.release()
-    splitOut.release()
 
     cap.release()
     print("\n{} saved".format(io_args['output_video']))
     print("\n{} saved".format(io_args['split_output_video']))
     print('\nfinished')
+    print('\ncreate split video')
+
+    # source video to segment
+    cap = cv2.VideoCapture(input_video)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    create_split_video(f"{io_args['output_masked_frame_dir']}", input_video,
+                       f"{io_args['split_output_masked_frame_dir']}/")
 
     # save colorized masks as a gif
     imageio.mimsave(io_args['output_gif'], masked_pred_list, fps=fps)
