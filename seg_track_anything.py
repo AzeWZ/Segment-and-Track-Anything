@@ -170,7 +170,7 @@ def create_split_video(mask_path, video_path, output_path):
 
             # Use logical indexing to set alpha channel to 0 where BGR=0
             alpha[np.all(frame[:, :, 0:3] == (0, 0, 0), 2)] = 0
-            print(frame[0, 0])
+            print(frame)
             # 保存融合后的图片
             cv2.imwrite(f"{output_path}{str(frame_idx).zfill(5)}_b.png", frame)
             # cv2.imwrite(f"{str(frame_idx).zfill(5)}_b.png", frame, [cv2.IMWRITE_PNG_COMPRESSION, 0])
@@ -323,7 +323,9 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
 
     # zip predicted mask
     os.system(f"zip -r {io_args['tracking_result_dir']}/{video_name}_pred_mask.zip {io_args['output_mask_dir']}")
-
+    # 生成抠图的视频
+    os.system(f"ffmpeg -framerate {fps} -i {io_args['split_output_masked_frame_dir']}/%05d_b.png -c:v qtrle -pix_fmt argb -loglevel debug {io_args['tracking_result_dir']}/{video_name}_split_mask.mov")
+    
     # manually release memory (after cuda out of memory)
     del SegTracker
     torch.cuda.empty_cache()
