@@ -333,6 +333,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
     os.system(f"zip -r {io_args['tracking_result_dir']}/{video_name}_pred_mask.zip {io_args['output_mask_dir']}")
     # 生成抠图的视频
     os.system(f"ffmpeg -framerate {fps} -i {io_args['split_output_masked_frame_dir']}/%05d_b.png -c:v qtrle -pix_fmt argb -loglevel debug {io_args['tracking_result_dir']}/{video_name}_split_mask.mov -y")
+    print("抠图视频生成完成")
     
     # manually release memory (after cuda out of memory)
     del SegTracker
