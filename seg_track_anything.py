@@ -235,11 +235,14 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
                 gc.collect()
             elif (frame_idx % sam_gap) == 0:
                 # 不发现新目标。只是清空一下缓存
-                
+
                 seg_mask = SegTracker.seg(frame)
                 torch.cuda.empty_cache()
                 gc.collect()
                 track_mask = SegTracker.track(frame)
+                pred_mask = track_mask 
+                # segtracker.restart_tracker()
+                SegTracker.add_reference(frame, pred_mask)
                 continue
                 print("发现新的目标")
                 # 发现新的目标
@@ -332,7 +335,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
     # zip predicted mask
     os.system(f"zip -r {io_args['tracking_result_dir']}/{video_name}_pred_mask.zip {io_args['output_mask_dir']}")
     # 生成抠图的视频
-    os.system(f"ffmpeg -framerate {fps} -i {io_args['split_output_masked_frame_dir']}/%05d_b.png -c:v qtrle -pix_fmt argb -loglevel debug {io_args['tracking_result_dir']}/{video_name}_split_mask.mov")
+    os.system(f"ffmpeg -framerate {fps} -i {io_args['split_output_masked_frame_dir']}/%05d_b.png -c:v qtrle -pix_fmt argb -loglevel debug {io_args['tracking_result_dir']}/{video_name}_split_mask.mov -y")
     
     # manually release memory (after cuda out of memory)
     del SegTracker
