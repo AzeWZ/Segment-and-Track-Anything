@@ -243,19 +243,18 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
                 pred_mask = track_mask 
                 # segtracker.restart_tracker()
                 SegTracker.add_reference(frame, pred_mask)
-                continue
-                print("发现新的目标")
-                # 发现新的目标
-                seg_mask = SegTracker.seg(frame)
-                torch.cuda.empty_cache()
-                gc.collect()
-                track_mask = SegTracker.track(frame)
-                # find new objects, and update tracker with new objects
-                new_obj_mask = SegTracker.find_new_objs(track_mask, seg_mask)
-                save_prediction(new_obj_mask, output_mask_dir, str(frame_idx + frame_num).zfill(5) + '_new.png')
-                pred_mask = track_mask + new_obj_mask
-                # segtracker.restart_tracker()
-                SegTracker.add_reference(frame, pred_mask)
+                # print("发现新的目标")
+                # # 发现新的目标
+                # seg_mask = SegTracker.seg(frame)
+                # torch.cuda.empty_cache()
+                # gc.collect()
+                # track_mask = SegTracker.track(frame)
+                # # find new objects, and update tracker with new objects
+                # new_obj_mask = SegTracker.find_new_objs(track_mask, seg_mask)
+                # save_prediction(new_obj_mask, output_mask_dir, str(frame_idx + frame_num).zfill(5) + '_new.png')
+                # pred_mask = track_mask + new_obj_mask
+                # # segtracker.restart_tracker()
+                # SegTracker.add_reference(frame, pred_mask)
             else:
                 pred_mask = SegTracker.track(frame, update_memory=True)
             print(frame_idx)
