@@ -234,9 +234,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
                 torch.cuda.empty_cache()
                 gc.collect()
             elif (frame_idx % sam_gap) == 0:
-                # 不发现新目标   
-                continue
-                # 发现新的目标
+                print("发现新的目标")
                 seg_mask = SegTracker.seg(frame)
                 torch.cuda.empty_cache()
                 gc.collect()
