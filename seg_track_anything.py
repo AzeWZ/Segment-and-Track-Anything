@@ -164,13 +164,11 @@ def create_split_video(mask_path, video_path, output_path):
 
             frame = cv2.bitwise_and(frame, mask)
             print(frame.shape)
-            print(frame[0, 0])
             # Slice of alpha channel
             alpha = frame[:, :, 3]
 
             # Use logical indexing to set alpha channel to 0 where BGR=0
             alpha[np.all(frame[:, :, 0:3] == (0, 0, 0), 2)] = 0
-            print(frame)
             # 保存融合后的图片
             cv2.imwrite(f"{output_path}{str(frame_idx).zfill(5)}_b.png", frame)
             # cv2.imwrite(f"{str(frame_idx).zfill(5)}_b.png", frame, [cv2.IMWRITE_PNG_COMPRESSION, 0])
