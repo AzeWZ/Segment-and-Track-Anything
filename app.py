@@ -311,7 +311,7 @@ def segment_everything(Seg_Tracker, aot_model, long_term_mem, max_len_long_term,
 
     return Seg_Tracker, masked_frame
 
-def add_new_object(Seg_Tracker):
+def  add_new_object(Seg_Tracker):
 
     prev_mask = Seg_Tracker.first_frame_mask
     Seg_Tracker.update_origin_merged_mask(prev_mask)    

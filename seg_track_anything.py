@@ -1,4 +1,6 @@
 import os
+from datetime import datetime
+
 import cv2
 from model_args import segtracker_args, sam_args, aot_args
 from PIL import Image
@@ -29,11 +31,17 @@ def draw_mask(img, mask, alpha=0.5, id_countour=False):
     img_mask = np.zeros_like(img)
     img_mask = img
     if id_countour:
+        start = datetime.now()
         # very slow ~ 1s per image
         obj_ids = np.unique(mask)
+        print('1', datetime.now() - start)
+        start = datetime.now()
         obj_ids = obj_ids[obj_ids != 0]
-
+        print('2', datetime.now() - start)
+        start = datetime.now()
         for id in obj_ids:
+            print('3', datetime.now() - start)
+            start = datetime.now()
             # Overlay color on  binary mask
             if id <= 255:
                 color = _palette[id * 3:id * 3 + 3]
@@ -47,6 +55,8 @@ def draw_mask(img, mask, alpha=0.5, id_countour=False):
 
             countours = binary_dilation(binary_mask, iterations=1) ^ binary_mask
             img_mask[countours, :] = 0
+            print('4', datetime.now() - start)
+            start = datetime.now()
     else:
         binary_mask = (mask != 0)
         countours = binary_dilation(binary_mask, iterations=1) ^ binary_mask
@@ -152,7 +162,7 @@ def create_split_video(mask_path, video_path, output_path):
             mask = cv2.imread(os.path.join(mask_path, f"{str(frame_idx).zfill(5)}.png"))
             # mask二值化
             _, mask = cv2.threshold(mask, 1, 255, cv2.THRESH_BINARY)
-            print(mask.shape)
+            # print(mask.shape)
             # 读取的 mask 是三通道的，需要转换成四通道的
             # mask = cv2.cvtColor(mask, cv2.COLOR_BGR2BGRA)
             # 保存 mask 黑白两色
@@ -163,7 +173,7 @@ def create_split_video(mask_path, video_path, output_path):
             mask = cv2.cvtColor(mask, cv2.COLOR_BGR2BGRA)
 
             frame = cv2.bitwise_and(frame, mask)
-            print(frame.shape)
+            # print(frame.shape)
             # Slice of alpha channel
             alpha = frame[:, :, 3]
 
@@ -214,7 +224,6 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
     create_dir(io_args['output_mask_dir'])
     create_dir(io_args['output_masked_frame_dir'])
     create_dir(io_args['split_output_masked_frame_dir'])
-
     torch.cuda.empty_cache()
     gc.collect()
     sam_gap = SegTracker.sam_gap
@@ -225,6 +234,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
             ret, frame = cap.read()
             if not ret:
                 break
+            originFrame = frame.copy()
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
             if frame_idx == 0:
@@ -238,7 +248,7 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
                 torch.cuda.empty_cache()
                 gc.collect()
                 track_mask = SegTracker.track(frame)
-                pred_mask = track_mask 
+                pred_mask = track_mask
                 # segtracker.restart_tracker()
                 SegTracker.add_reference(frame, pred_mask)
                 # print("发现新的目标")
@@ -258,83 +268,96 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
             print(frame_idx)
             torch.cuda.empty_cache()
             gc.collect()
-
+            mask = pred_mask.copy()
             save_prediction(pred_mask, output_mask_dir, str(frame_idx + frame_num).zfill(5) + '.png')
             pred_list.append(pred_mask)
 
             print("processed frame {}, obj_num {}".format(frame_idx + frame_num, SegTracker.get_obj_num()), end='\r')
             frame_idx += 1
+            frame = cv2.cvtColor(originFrame, cv2.COLOR_BGR2BGRA)
+            # mask二值化
+            _, mask = cv2.threshold(mask, 1, 255, cv2.THRESH_BINARY)
+            mask =  cv2.cvtColor(mask, cv2.COLOR_BGR2BGRA)
+            frame = cv2.bitwise_and(frame, mask)
+            alpha = frame[:, :, 3]
+            # Use logical indexing to set alpha channel to 0 where BGR=0
+            alpha[np.all(frame[:, :, 0:3] == (0, 0, 0), 2)] = 0
+            # 保存融合后的图片
+            cv2.imwrite(f"{split_output_masked_frame_dir}/{str(frame_idx).zfill(5)}_b.png", frame)
+
         cap.release()
         print('\nfinished')
 
     ##################
-    # Visualization
+    # Visualization 可视化
     ##################
-
-    # draw pred mask on frame and save as a video
-    cap = cv2.VideoCapture(input_video)
-    # if frame_num > 0:
-    #     for i in range(0, frame_num):
-    #         cap.read()
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    # if input_video[-3:]=='mp4':
-    #     fourcc =  cv2.VideoWriter_fourcc(*"mp4v")
-    # elif input_video[-3:] == 'avi':
-    #     fourcc =  cv2.VideoWriter_fourcc(*"MJPG")
-    #     # fourcc = cv2.VideoWriter_fourcc(*"XVID")
-    # else:
-    #     fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
-    out = cv2.VideoWriter(io_args['output_video'], fourcc, fps, (width, height))
-
-    frame_idx = 0
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        pred_mask = pred_list[frame_idx]
-        masked_frame = draw_mask(frame, pred_mask)
-
-        # 写带 mask 的图片，处理后的
-        maskPath = f"{io_args['output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png"
-        cv2.imwrite(maskPath, masked_frame[:, :, ::-1])
-        cv2.imwrite(f"{io_args['video_frame_dir']}/{str(frame_idx).zfill(5)}.png", frame)
-        masked_pred_list.append(masked_frame)
-        masked_frame = cv2.cvtColor(masked_frame, cv2.COLOR_RGB2BGR)
-        out.write(masked_frame)
-
-        print('frame {} writed'.format(frame_idx), end='\r')
-        frame_idx += 1
-    out.release()
-
-    cap.release()
-    print("\n{} saved".format(io_args['output_video']))
-    print("\n{} saved".format(io_args['split_output_video']))
-    print('\nfinished')
-    print('\ncreate split video')
-
-    # source video to segment
-    cap = cv2.VideoCapture(input_video)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    create_split_video(f"{io_args['output_mask_dir']}", input_video,
-                       f"{io_args['split_output_masked_frame_dir']}/")
+    #
+    # # draw pred mask on frame and save as a video
+    # cap = cv2.VideoCapture(input_video)
+    # # if frame_num > 0:
+    # #     for i in range(0, frame_num):
+    # #         cap.read()
+    # fps = cap.get(cv2.CAP_PROP_FPS)
+    # width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    # height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    # num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    #
+    # fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    # # if input_video[-3:]=='mp4':
+    # #     fourcc =  cv2.VideoWriter_fourcc(*"mp4v")
+    # # elif input_video[-3:] == 'avi':
+    # #     fourcc =  cv2.VideoWriter_fourcc(*"MJPG")
+    # #     # fourcc = cv2.VideoWriter_fourcc(*"XVID")
+    # # else:
+    # #     fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+    # # out = cv2.VideoWriter(io_args['output_video'], fourcc, fps, (width, height))
+    #
+    # frame_idx = 0
+    # while cap.isOpened():
+    #     ret, frame = cap.read()
+    #     if not ret:
+    #         break
+    #
+    #     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    #     pred_mask = pred_list[frame_idx]
+    #     masked_frame = draw_mask(frame, pred_mask)
+    #
+    #     # 写带 mask 的图片，处理后的
+    #     maskPath = f"{io_args['output_masked_frame_dir']}/{str(frame_idx).zfill(5)}.png"
+    #     cv2.imwrite(maskPath, masked_frame[:, :, ::-1])
+    #     cv2.imwrite(f"{io_args['video_frame_dir']}/{str(frame_idx).zfill(5)}.png", frame)
+    #     masked_pred_list.append(masked_frame)
+    #     masked_frame = cv2.cvtColor(masked_frame, cv2.COLOR_RGB2BGR)
+    #     # out.write(masked_frame)
+    #
+    #     print('frame {} writed'.format(frame_idx), end='\r')
+    #     frame_idx += 1
+    # # out.release()
+    #
+    # cap.release()
+    # print("\n{} saved".format(io_args['output_video']))
+    # print("\n{} saved".format(io_args['split_output_video']))
+    # print('\nfinished')
+    # print('\ncreate split video')
+    #
+    # # source video to segment
+    # cap = cv2.VideoCapture(input_video)
+    # fps = cap.get(cv2.CAP_PROP_FPS)
+    # 抠图视频
+    # create_split_video(f"{io_args['output_mask_dir']}", input_video,
+    #                    f"{io_args['split_output_masked_frame_dir']}/")
 
     # save colorized masks as a gif
-    imageio.mimsave(io_args['output_gif'], masked_pred_list, fps=fps)
-    print("{} saved".format(io_args['output_gif']))
+    # imageio.mimsave(io_args['output_gif'], masked_pred_list, duration=(1000 * 1 / fps))
+    # print("{} saved".format(io_args['output_gif']))
 
     # zip predicted mask
-    os.system(f"zip -r {io_args['tracking_result_dir']}/{video_name}_pred_mask.zip {io_args['output_mask_dir']}")
+    # os.system(f"zip -r {io_args['tracking_result_dir']}/{video_name}_pred_mask.zip {io_args['output_mask_dir']}")
     # 生成抠图的视频
-    os.system(f"ffmpeg -framerate {fps} -i {io_args['split_output_masked_frame_dir']}/%05d_b.png -c:v qtrle -pix_fmt argb -loglevel debug {io_args['tracking_result_dir']}/{video_name}_split_mask.mov -y")
+    os.system(
+        f"ffmpeg -framerate {fps} -i {io_args['split_output_masked_frame_dir']}/%05d_b.png -c:v qtrle -pix_fmt argb -loglevel debug {io_args['tracking_result_dir']}/{video_name}_split_mask.mov -y")
     print("抠图视频生成完成")
-    
+
     # manually release memory (after cuda out of memory)
     del SegTracker
     torch.cuda.empty_cache()
