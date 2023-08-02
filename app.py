@@ -577,7 +577,7 @@ def seg_track_app():
                                 minimum = 1,
                                 step=1,
                                 maximum = 9999,
-                                value=100,
+                                value=9999,
                                 interactive=True,
                             )
 

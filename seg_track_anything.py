@@ -17,6 +17,7 @@ def save_prediction(pred_mask, output_dir, file_name):
     save_mask = save_mask.convert(mode='P')
     save_mask.putpalette(_palette)
     save_mask.save(os.path.join(output_dir, file_name))
+    return save_mask
 
 
 def colorize_mask(pred_mask):
@@ -268,10 +269,10 @@ def video_type_input_tracking(SegTracker, input_video, io_args, video_name, fram
             print(frame_idx)
             torch.cuda.empty_cache()
             gc.collect()
-            mask = pred_mask.copy()
+
             save_prediction(pred_mask, output_mask_dir, str(frame_idx + frame_num).zfill(5) + '.png')
             pred_list.append(pred_mask)
-
+            mask = cv2.imread(f"{output_mask_dir}/{ str(frame_idx + frame_num).zfill(5) + '.png'}");
             print("processed frame {}, obj_num {}".format(frame_idx + frame_num, SegTracker.get_obj_num()), end='\r')
             frame_idx += 1
             frame = cv2.cvtColor(originFrame, cv2.COLOR_BGR2BGRA)
